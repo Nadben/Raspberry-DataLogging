@@ -9,10 +9,10 @@ Setup :
   
 Modbus setup :
   
-  Baudrate : 9600
-  parity bit : None
-  Slave address : 1
-  Modbus address on slave : 400001 to 400012 (32 Bits addresses)
+  - Baudrate : 9600
+  - parity bit : None
+  - Slave address : 1
+  - Modbus address on slave : 400001 to 400012 (32 Bits addresses)
   
  
 
