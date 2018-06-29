@@ -9,54 +9,20 @@ from matplotlib import style
 from matplotlib import pylab
 from threading import Thread
 
-
-
-#############################################################
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#############################################################
-
-#create a file with the date
+##create a file with the date
 tempFile = './tmp.csv'
-dataLogFile = 'dataLogging' + time.strftime("%Y-%m-%d") + '.csv'
-infich = './' + dataLogFile
 outdir = 'Archives'
-infich_2 = './Archives/dataLogging' + time.strftime("%Y-%m-%d") + '.csv'
-infich_3 = './Archives/Weekly/dataLogging' + time.strftime("%Y-%m") + '.csv'
-graphName = 'graph' + time.strftime("%Y-%m-%d") + '.png'
-##style.use('fivethirtyeight')
+
+#style.use('fivethirtyeight')
 style.use('ggplot')
 
-
-#Source des fichiers cree avec le nom des fichiers
-src_co2 = './CO2'+graphName
-src_ph = './ph' + graphName
-src_eau = './qEau' + graphName
-src_air = './qAir' + graphName
-src_acide = './qAcide' + graphName
-src_pressure = './pression' + graphName
-
 #destination finale des fichiers cree
-dst_co2 = './Rapport/Graphiques_Journee/CO2'
-dst_ph = './Rapport/Graphiques_Journee/pH'
-dst_qair = './Rapport/Graphiques_Journee/Debit Air'
-dst_qeau = './Rapport/Graphiques_Journee/Debit Eau'
-dst_qacide = './Rapport/Graphiques_Journee/Debit Acide'
-dst_pression = './Rapport/Graphiques_Journee/Pression'
+dst_co2 = './Rapport/Graphiques_Journee/CO2/'
+dst_ph = './Rapport/Graphiques_Journee/pH/'
+dst_qair = './Rapport/Graphiques_Journee/Debit Air/'
+dst_qeau = './Rapport/Graphiques_Journee/Debit Eau/'
+dst_qacide = './Rapport/Graphiques_Journee/Debit Acide/'
+dst_pression = './Rapport/Graphiques_Journee/Pression/'
 
 #creation d'une figure
 fig = plt.figure()
@@ -74,12 +40,10 @@ ax5 = fig.add_subplot(5,1,5)
 axXtickList = [n for n in range(0,3600,60)]#le temps
 conversion = [str(h) for h in range(0,60)]
 
-
 incrementFile = 0
-
 cnt = 0
 
-def plottingDailyReport():
+def plottingDailyReport(graphName,infich_2):
 
     fig1 = plt.figure()
     fig1.suptitle('Co2',fontsize=20)
@@ -104,7 +68,6 @@ def plottingDailyReport():
     fig6 = plt.figure()
     fig6.suptitle('qAcid',fontsize=20)
     fig_qAcid = fig6.add_subplot(111)
-
 
     fig_CO2.set_ylabel('[CO2]',fontsize=12)
     fig_pH.set_ylabel('[pH]',fontsize=12)
@@ -133,11 +96,6 @@ def plottingDailyReport():
     fig_qAir.yaxis.set_major_locator(ticker.MaxNLocator(5))
     fig_qAcid.yaxis.set_major_locator(ticker.MaxNLocator(5))
     fig_pressure.yaxis.set_major_locator(ticker.MaxNLocator(5))
-
-
-    
-    
-    global i #je ne sais pas pourquoi c'est la
     
     co2_to_plot, qEau_to_plot, pH_to_plot, pressure_to_plot, qAcid_to_plot, qAir_to_plot, cntx = [],[],[],[],[],[],[]
     data_set = open(infich_2,'r').read()
@@ -162,22 +120,31 @@ def plottingDailyReport():
 
     #Plot processing
     fig_CO2.plot(cntx,co2_to_plot,linewidth=2)
-    fig1.savefig('CO2'+graphName)
+    fig1.savefig(dst_co2+graphName)
     
     fig_pH.plot(cntx,pH_to_plot)
-    fig2.savefig('ph'+graphName)
+    fig2.savefig(dst_ph+graphName)
     
     fig_qAir.plot(cntx,qAir_to_plot,linewidth=2)
-    fig3.savefig('qAir'+graphName)
+    fig3.savefig(dst_qair+graphName)
 
     fig_qEau.plot(cntx,qEau_to_plot,linewidth=2)
-    fig4.savefig('qEau'+graphName)
+    fig4.savefig(dst_qeau+graphName)
 
     fig_pressure.plot(cntx,pressure_to_plot,linewidth=2)
-    fig5.savefig('pression'+graphName)
+    fig5.savefig(dst_pression+graphName)
     
     fig_qAcid.plot(cntx,qAcid_to_plot,linewidth=2)
-    fig6.savefig('qAcide'+graphName)
+    fig6.savefig(dst_qacide+graphName)
+
+##    plt.close(fig1)
+##    plt.close(fig2)
+##    plt.close(fig3)
+##    plt.close(fig4)
+##    plt.close(fig5)
+##    plt.close(fig6)
+
+    
 
     
 
@@ -196,6 +163,8 @@ def fileCopy(src,dest):
 
 
 def shiftFile(line_count):
+
+    
     #rewrite tmpfile to newfile then rename newfile
     with open(tempFile,'r') as tmpfile :
         with open('newfile.csv', 'a') as newfile :
@@ -232,8 +201,8 @@ def checkFile(tmpfile):
 #Lecture des sensors avec minimalmodbus 
 def sensorReadings(p2k,cntx):
 ##    DI = p2k.read_bit(0)
-    DI = 0
     
+    DI = 0
     Co2 = p2k.read_register(0,functioncode=3)
     qEau = p2k.read_register(2,functioncode=3)
     qAir = p2k.read_register(4,functioncode=3)
@@ -247,10 +216,35 @@ def sensorReadings(p2k,cntx):
 
 
 def writingToFile(Co2,pH,qEau,qAir,pressure,qAcid,cntx,infich,DI):
+
+
+    
     if time.strftime("%H:%M") == '23:55':
         print("it's time to STOP")
         DI = 1
         
+    #Bloc de test
+        
+##    elif time.strftime("%H:%M") == '15:20':
+##        print("it's time to STOP")
+##        DI = 1
+##    elif time.strftime("%H:%M") == '15:25':
+##        print("it's time to STOP")
+##        DI = 1
+##    elif time.strftime("%H:%M") == '15:30':
+##        print("it's time to STOP")
+##        DI = 1
+##    elif time.strftime("%H:%M") == '15:35':
+##        print("it's time to STOP")
+##        DI = 1
+##    elif time.strftime("%H:%M") == '15:40':
+##        print("it's time to STOP")
+##        DI = 1
+##    elif time.strftime("%H:%M") == '15:45':
+##        print("it's time to STOP")
+##        DI = 1   
+            
+
     else:
         acquisitionTime = 2 # global
         
@@ -263,8 +257,8 @@ def writingToFile(Co2,pH,qEau,qAir,pressure,qAcid,cntx,infich,DI):
                 writer2 = csv.writer(csvfile)#csv file
                 
                 writer1.writerow([cntx, Co2, pH, qEau, qAir,pressure])#tmp file
-                writer2.writerow([time.strftime("%Y-%m-%d"),time.strftime("%H:%M"), 0, 0, qEau, 0,
-                                  qAir, pH, 0, 0, 0, 0, 0, Co2, 0])
+                writer2.writerow([time.strftime("%Y-%m-%d"),time.strftime("%H:%M"), 0, 0, qEau, qAcid,
+                                  qAir, pH, 0, 0, pressure, 0, 0, Co2, 0])
         
         time.sleep(acquisitionTime) 
         
@@ -360,7 +354,7 @@ def threadPlot():
 
             plt.tight_layout()
 
-    ani = animation.FuncAnimation(fig, dynamicPlotting, frames=60, interval=5000)
+    ani = animation.FuncAnimation(fig, dynamicPlotting, interval=5000)
     plt.show()
 
 
@@ -375,9 +369,14 @@ def startLog():
 
         if t != 1 :
             
-            #ecrire le header du infich, car c'est un autre jour
-            print(dataLogFile)
-            print(infich)
+ 
+            dataLogFile = 'dataLogging' + time.strftime("%Y-%m-%d") + '.csv'
+            infich = './' + dataLogFile
+            infich_2 = './Archives/dataLogging' + time.strftime("%Y-%m-%d") + '.csv'
+            infich_3 = './Archives/Weekly/dataLogging' + time.strftime("%Y-%m") + '.csv'
+            graphName = 'graph' + time.strftime("%Y-%m-%d") + '.png'
+            
+                        
             with open(infich,'a') as f :
                 writing = csv.writer(f)
                 writing.writerow(["date", "heure", "prenom", "source", "debit_eau", "debit_acide",
@@ -412,29 +411,17 @@ def startLog():
             print("moving the files")
             #Move le fichier datalog dans le dossier archives
             fileCopy(infich,outdir)
-            print("deleting tmp files")
-            #appel la fonction pour plotter les graphiques de la journee
-            plottingDailyReport()
-            #Bouge tous les fichiers recu
-            shutil.move(src_co2,dst_co2)
-            shutil.move(src_eau,dst_qeau)
-            shutil.move(src_ph,dst_ph)
-            shutil.move(src_air,dst_qair)
-            shutil.move(src_pressure,dst_pression)
-            shutil.move(src_acide,dst_qacide)
+            print("Writting the daily report")
+            plottingDailyReport(graphName,infich_2)
             print("Writting the monthly report")
-            #ecrire le header du infich_3
-
-            cnt = weeklyReport(cnt)
-
-            DI = 0 #restart the loop
-
-            #wait 5 minutes until tomorrow
+            cnt = weeklyReport(cnt,infich_2,infich_3)
+            #wait 5 minutes until tomorrow 
             time.sleep(300)
-            t = 0
+            #time.sleep(60) #For testing
+            DI,t = 0,0 #restart the loop
             
                 
-def writingWeeklyReport(cnt,Co2,pH,qEau,qAir,pressure):
+def writingWeeklyReport(cnt,Co2,pH,qEau,qAir,pressure,infich_3):
     cnt += 1
     if cnt <= 7 :
         with open(infich_3, 'a') as csvfile : 
@@ -448,7 +435,7 @@ def writingWeeklyReport(cnt,Co2,pH,qEau,qAir,pressure):
     return cnt
 
 
-def weeklyReport(cnt):
+def weeklyReport(cnt,infich_2,infich_3):
 
     # opening the daily CSV reports
 
@@ -479,36 +466,21 @@ def weeklyReport(cnt):
     s4 = round(sum(h)/len(h),2)
     s5 = round(sum(p)/len(p),2)
 
-    cnt = writingWeeklyReport(cnt,s5,s4,s1,s3,s2)
+    cnt = writingWeeklyReport(cnt,s5,s4,s1,s3,s2,infich_3)
 
     return cnt
 
     
-
-    
-
 
 
 #ouvre 1 process et effectue le code
 if __name__ == '__main__' :
     #if the file doesn't exist we create it and write on it
 
-
     p2k = minimalmodbus.Instrument('/dev/ttyUSB0',1)
-    if os.path.isfile(infich) == False:
-        
 
-        Thread(target=startLog).start()
-        threadPlot()
-
-    else :
-        print("file already exists")
-
-
-
-
-
-
+    Thread(target=startLog).start()
+    threadPlot()
 
 
 
