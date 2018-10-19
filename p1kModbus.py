@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import matplotlib
 matplotlib.use('TkAgg')
 
@@ -116,12 +118,12 @@ def plottingDailyReport(graphName,infich_2):
         if i in range(2,len(lines)):#skip header
             cntx.append(i)
             a,b,c,d,e,f,g,h,k,l,m,n,o,p,q = line.split(',')
-            co2_to_plot.append(int(p))
-            qEau_to_plot.append(int(e))
-            pH_to_plot.append(int(h))
-            pressure_to_plot.append(int(k))
-            qAcid_to_plot.append(int(f))
-            qAir_to_plot.append(int(g))
+            co2_to_plot.append(float(p))
+            qEau_to_plot.append(float(e))
+            pH_to_plot.append(float(h))
+            pressure_to_plot.append(float(k))
+            qAcid_to_plot.append(float(f))
+            qAir_to_plot.append(float(g))
 
     #Plot processing
     fig_CO2.plot(cntx,co2_to_plot,linewidth=2)
@@ -184,9 +186,10 @@ def shiftFile(line_count):
                 if skip_to_line == 1:#skip first line
                     for lines in tmpfile:
                         sp = lines.split(',')
+                        #essai sans type cast int
                         csv_writer.writerow(
-                            [int(sp[0]), int(sp[1]), int(sp[2]),
-                             int(sp[3]), int(sp[4]), int(sp[5])]
+                            [int(sp[0]), float(sp[1]), float(sp[2]),
+                             float(sp[3]), float(sp[4]), float(sp[5])]
                             )
 
     os.remove(tempFile)#remove temporary file
@@ -208,27 +211,33 @@ def checkFile(tmpfile):
 #Lecture des sensors avec minimalmodbus
 def sensorReadings(p2k,cntx):
 ##            DI = p2k.read_bit(0)
-    #faire un try except block OSError
-    try :
-        Co2 = p2k.read_register(0,functioncode=3)
-    except OSError as ose :
-        print("couldn't communicate with the plc! Verify the connection please. ")
-        pass
+    #faire un try except block OSError et gérer l'erreur
+    while True:
+        try :
+            Co2 = p2k.read_register(0,functioncode=3)
+        except OSError as ose :
+            print("couldn't communicate with the plc! Verify the connection please. ")
+            continue
+        else :
+            break
 
-    else :
-        DI = 0
-        Co2 = p2k.read_register(0,functioncode=3)
-        qAir = p2k.read_register(1,functioncode=3)
-        qEau = p2k.read_register(2,functioncode=3)
-        pH = p2k.read_register(3,functioncode=3)
-        pressure = p2k.read_register(4,functioncode=3)
-        qAcid = p2k.read_register(5,functioncode=3)
-        cntx+=1
+ 
+    DI = 0
+    Co2 = p2k.read_register(0,functioncode=3)
+    pressure = p2k.read_register(1,functioncode=3)
+    qEau = p2k.read_register(2,functioncode=3)
+    pH = p2k.read_register(3,functioncode=3)
+##        qAcid = p2k.read_register(5,functioncode=3)
+    qAcid = 0
+    qAir = 0
+    cntx+=1
 
-        ## parametres de conversions
+    ## parametres de conversions
+    qEau *= (77 / 8191)
+    Co2 *= (120000 / 8191)
+    pH *= ((1400 / 8191)/100)
+    pressure *= ((600 / 8191 )/10)
 
-        Co2 *= (120000 / 8191)
-        pH /= 10
 
         return Co2,pH,qEau,qAir,pressure,qAcid,cntx,DI
 
@@ -321,11 +330,11 @@ def weeklyReport(cnt,infich_2,infich_3):
         if len(line) > 1 and i > 1:
             a1,b1,c1,d1,e1,f1,g1,h1,k1,l1,m1,n1,o1,p1,q1 = line.split(',')
 
-            e.append(int(e1)) #debit d'eau
-            f.append(int(f1)) #debit acide
-            g.append(int(g1)) #debit air
-            h.append(int(h1)) #pH sensorex
-            p.append(int(p1)) #Co2
+            e.append(float(e1)) #debit d'eau
+            f.append(float(f1)) #debit acide
+            g.append(float(g1)) #debit air
+            h.append(float(h1)) #pH sensorex
+            p.append(float(p1)) #Co2
 
 
     s1,s2,s3,s4,s5 = 0,0,0,0,0
@@ -345,10 +354,10 @@ def weeklyReport(cnt,infich_2,infich_3):
 
 
 def startLog():
-
+    minimalmodbus.BAUDRATE = 9600
     p2k = minimalmodbus.Instrument('/dev/ttyUSB0',1)
 ##    DI = p2k.read_bit(0)
-    cntx,cnt,DI,t =0,7,0,0
+    cntx,cnt,DI,t = 0,7,0,0
 
     while True:
 
@@ -362,10 +371,14 @@ def startLog():
             graphName = 'graph' + time.strftime("%Y-%m-%d") + '.png'
 
 
-            with open(infich,'a') as f :
-                writing = csv.writer(f)
-                writing.writerow(headerList)
-            t = 1
+            if os.path.isfile(infich) :
+                os.remove(infich)
+
+            else :
+                with open(infich,'a') as f :
+                    writing = csv.writer(f)
+                    writing.writerow(headerList)
+                t = 1
 
         elif cnt == 7:
 
@@ -403,4 +416,19 @@ def startLog():
 
 
 if __name__ == '__main__' :
+
+    # removing any temporary file before starting log
+    # this is here only if there is a restart during the day
+    # the downside is that it will delete the data for that protion of the day
+    if os.path.isfile(tempFile):
+        os.remove(tempFile)
+    elif os.path.isfile('/home/pi/newfile.csv'):
+        os.remove('/home/pi/newfile.csv')
+    
     startLog()
+
+
+
+
+
+    
