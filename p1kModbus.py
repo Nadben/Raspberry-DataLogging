@@ -217,6 +217,7 @@ def sensorReadings(p2k,cntx):
             Co2 = p2k.read_register(0,functioncode=3)
         except OSError as ose :
             print("couldn't communicate with the plc! Verify the connection please. ")
+            time.sleep(10)
             continue
         else :
             break
@@ -239,7 +240,7 @@ def sensorReadings(p2k,cntx):
     pressure *= ((600 / 8191 )/10)
 
 
-        return Co2,pH,qEau,qAir,pressure,qAcid,cntx,DI
+    return Co2,pH,qEau,qAir,pressure,qAcid,cntx,DI
 
 
 def writingToFile(Co2,pH,qEau,qAir,pressure,qAcid,cntx,infich,DI):
