@@ -3,15 +3,15 @@
 import matplotlib
 matplotlib.use('TkAgg')
 
-import minimalmodbus, time, csv, os, threading, shutil, sys
+import minimalmodbus, time, csv, os, shutil, sys
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.ticker as ticker
 
 ##import matplotlib.dates as mdates
 from matplotlib import style
-from matplotlib import pylab
-from threading import Thread #not used
+
+
 
 
 
@@ -25,24 +25,29 @@ Description:
     datalogger for remote use.
 
 
+Last update : 2018-10-19
+
+
 """
 
 headerList = ["date", "heure", "prenom", "source", "debit_eau", "debit_acide",
               "debit_air", "ph_sensorex", "carbonates_uv", "carbonates_sortie",
               "pression_eau_sortie_filtre", "pression_air_entree", "pression_air",
               "concentration_co2", "ratio_debit", "ratio_debit_eau_pression_eau"]
+ 
 
 
 
-
-##create a file with the date
+# fichier temporarire creer dans le répertoire actuel.
 tempFile = './tmp.csv'
+
+# output directory pour les fichiers daily
 outdir = 'Archives'
 
-#style.use('fivethirtyeight')
+# style.use('fivethirtyeight')
 style.use('ggplot')
 
-#destination finale des fichiers cree
+# destination finale des fichiers cree
 dst_co2 = './Rapport/Graphiques_Journee/CO2/'
 dst_ph = './Rapport/Graphiques_Journee/pH/'
 dst_qair = './Rapport/Graphiques_Journee/Debit Air/'
@@ -50,7 +55,23 @@ dst_qeau = './Rapport/Graphiques_Journee/Debit Eau/'
 dst_qacide = './Rapport/Graphiques_Journee/Debit Acide/'
 dst_pression = './Rapport/Graphiques_Journee/Pression/'
 
+
+# compteur initialisé a 0
 cnt = 0
+
+
+
+
+'''
+Fonction plottingDailyReport
+@Input : Fichier avec le nom et la date de création des graphs et le répertoire de destination des graphiques
+@Output : None
+
+Descripton : Fonction qui plotte les figures et les sauvegardes dans leurs destinations respectives.
+
+
+'''
+
 
 def plottingDailyReport(graphName,infich_2):
 
@@ -159,8 +180,23 @@ def plottingDailyReport(graphName,infich_2):
 
 
 
-def fileCopy(src,dest):
 
+'''
+Function fileCopy
+@input: source folder, destination folder
+@output: none
+
+Description : fonction qui permet de deplacer un fichier de la
+source a une autre destination avec le module OS de python
+Un bloc d'exception gere si un fichier a la destination finale
+est deja present, mais au lieu de throw une erreur je fais le move
+quand meme avec le module shutil.
+
+
+'''
+
+def fileCopy(src,dest):
+    
     dest_dir = os.path.dirname(dest)
 
     try :
@@ -172,6 +208,27 @@ def fileCopy(src,dest):
 
 
 
+
+
+
+'''
+Function shiftFile
+@Input : le numero de ligne du fichier
+@Output : none
+
+Description : fonction qui permet de shifter vers le haut un
+fichier excel our avoir qu'un certain nombre de ligne. comme
+une structure de donnée FIFO mais pour un fichier excel.
+
+mode de fonctionnement:
+
+J'ai un fichier temporaire qui contient les données et j'ouvre
+un newfile en mode append (vide) et j'ecris toutes le lignes du tmp
+file dans newfile sauf la premiere ligne (jefface l'entree la plus ancienne).
+ensuite jefface le fichier tmp et je renomme le nouveau fichier.
+
+
+'''
 def shiftFile(line_count):
 
 
@@ -196,6 +253,16 @@ def shiftFile(line_count):
     os.rename('newfile.csv','tmp.csv') #rename newfile to oldfile
 
 
+'''
+Fonction checkFile
+@Input : le fichier temporaire contenant les données
+@Output : none
+
+Description : Fichier qui compte le nombre de ligne, lorsqu'on arrive a 180
+on appelle la fonction shiftFile
+
+'''
+
 def checkFile(tmpfile):
     line_count = 0
     for lines in tmpfile:
@@ -207,6 +274,16 @@ def checkFile(tmpfile):
 
 
 
+'''
+Fonction sensorReadings
+@Input : L'objet p2k (minimal modbus), counter
+@Output : les valeurs récupérée de l'automate
+
+Description : Fichier qui récupère les données de l'automate, et
+les converties pour être des données comprenable par une humain
+avec les parametres de conversions.
+
+'''
 
 #Lecture des sensors avec minimalmodbus
 def sensorReadings(p2k,cntx):
@@ -217,7 +294,7 @@ def sensorReadings(p2k,cntx):
             Co2 = p2k.read_register(0,functioncode=3)
         except OSError as ose :
             print("couldn't communicate with the plc! Verify the connection please. ")
-            time.sleep(10)
+            time.sleep(20)
             continue
         else :
             break
@@ -242,6 +319,16 @@ def sensorReadings(p2k,cntx):
 
     return Co2,pH,qEau,qAir,pressure,qAcid,cntx,DI
 
+
+'''
+Fonction writingToFile
+@Input: les données de l'automate à écrire dans le fichier, un compteur, un file path, DI
+@Output : DI qui est utilisé pour indiquer une fin de journée
+
+Description : Ce fichier écrit dans 2 fichiers différents les données de l'automate et indique quand une journée
+finie.
+
+'''
 
 def writingToFile(Co2,pH,qEau,qAir,pressure,qAcid,cntx,infich,DI):
 
@@ -299,6 +386,21 @@ def writingToFile(Co2,pH,qEau,qAir,pressure,qAcid,cntx,infich,DI):
     return DI
 
 
+'''
+Fonction : writingWeeklyReport
+@Input : les valeurs moyenne de la journée, fichier de destination
+@Output : cnt = Compteur pour indiquer les les jours de la semaine
+
+Description : Fonction qui est utilisé pour écrire dans un rapport du mois
+la moyenne de la journée.
+
+N.B. : Le code est inutile dans le sens que lorsqu'ils n'utilisent plus l'automate,
+Les valeurs récupérées par le raspberry PI varient énormément, car ils ne mesurent rien. Donc, cela fausse les
+moyennes de la journée. 
+
+'''
+
+
 
 def writingWeeklyReport(cnt,Co2,pH,qEau,qAir,pressure,infich_3):
     cnt += 1
@@ -313,6 +415,23 @@ def writingWeeklyReport(cnt,Co2,pH,qEau,qAir,pressure,infich_3):
         cnt = 0
 
     return cnt
+
+
+
+
+'''
+Fonction : weeklyReport
+@Input : les valeurs moyenne de la journée, fichier de destination
+@Output : cnt = Compteur pour indiquer les les jours de la semaine
+
+Description : Fonction qui est utilisé pour écrire dans un rapport du mois
+la moyenne de la journée.
+
+N.B. : Le code est inutile dans le sens que lorsqu'ils n'utilisent plus l'automate,
+Les valeurs récupérées par le raspberry PI varient énormément, car ils ne mesurent rien. Donc, cela fausse les
+moyennes de la journée. 
+
+'''
 
 
 def weeklyReport(cnt,infich_2,infich_3):
@@ -350,9 +469,16 @@ def weeklyReport(cnt,infich_2,infich_3):
 
     return cnt
 
+'''
+Fonction : startLog
+@Input : None
+@Output : None
 
+Description : Boucle principale qui va effectuer des calculs selon les états
+de t, cnt et DI, puis qui initialise la communicationi modbus a l'aide du
+module minimalModbus. 
 
-
+'''
 
 def startLog():
     minimalmodbus.BAUDRATE = 9600
